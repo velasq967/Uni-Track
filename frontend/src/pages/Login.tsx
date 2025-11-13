@@ -5,19 +5,36 @@ import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "sonner";
+import { authService } from "@/services/authService";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { setUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
-      toast.success("¡Inicio de sesión exitoso!");
-      navigate("/dashboard");
-    } else {
+    
+    if (!email || !password) {
       toast.error("Por favor completa todos los campos");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await authService.login({ email, password });
+      toast.success("¡Inicio de sesión exitoso!");
+      setUser(response.user);
+      navigate("/dashboard");
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Error al iniciar sesión";
+      toast.error(message);
+      console.error("Login error:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -55,8 +72,12 @@ const Login = () => {
             />
           </div>
 
-          <Button type="submit" className="w-full h-12 text-base font-medium">
-            Iniciar
+          <Button 
+            type="submit" 
+            className="w-full h-12 text-base font-medium"
+            disabled={isLoading}
+          >
+            {isLoading ? "Iniciando sesión..." : "Iniciar"}
           </Button>
 
           <Button

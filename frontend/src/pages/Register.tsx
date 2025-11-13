@@ -5,20 +5,52 @@ import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "sonner";
+import { authService } from "@/services/authService";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Register = () => {
   const navigate = useNavigate();
-  const [name, setName] = useState("");
+  const { setUser } = useAuth();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [university, setUniversity] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (name && email && password) {
+    
+    if (!firstName || !lastName || !email || !password) {
+      toast.error("Por favor completa los campos requeridos");
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await authService.register({
+        email,
+        password,
+        firstName,
+        lastName,
+        studentId: studentId || undefined,
+        university: university || undefined,
+      });
       toast.success("¡Registro exitoso!");
+      setUser(response.user);
       navigate("/dashboard");
-    } else {
-      toast.error("Por favor completa todos los campos");
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Error al registrarse";
+      toast.error(message);
+      console.error("Register error:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -33,14 +65,28 @@ const Register = () => {
 
         <form onSubmit={handleRegister} className="w-full space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre</Label>
+            <Label htmlFor="firstName">Nombre</Label>
             <Input
-              id="name"
+              id="firstName"
               type="text"
               placeholder="Tu nombre"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
               className="h-12"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="lastName">Apellido</Label>
+            <Input
+              id="lastName"
+              type="text"
+              placeholder="Tu apellido"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="h-12"
+              required
             />
           </div>
 
@@ -53,6 +99,7 @@ const Register = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="h-12"
+              required
             />
           </div>
 
@@ -65,11 +112,40 @@ const Register = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="h-12"
+              required
             />
           </div>
 
-          <Button type="submit" className="w-full h-12 text-base font-medium">
-            Registrarse
+          <div className="space-y-2">
+            <Label htmlFor="studentId">ID Estudiante (Opcional)</Label>
+            <Input
+              id="studentId"
+              type="text"
+              placeholder="Tu ID de estudiante"
+              value={studentId}
+              onChange={(e) => setStudentId(e.target.value)}
+              className="h-12"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="university">Universidad (Opcional)</Label>
+            <Input
+              id="university"
+              type="text"
+              placeholder="Tu universidad"
+              value={university}
+              onChange={(e) => setUniversity(e.target.value)}
+              className="h-12"
+            />
+          </div>
+
+          <Button 
+            type="submit" 
+            className="w-full h-12 text-base font-medium"
+            disabled={isLoading}
+          >
+            {isLoading ? "Registrando..." : "Registrarse"}
           </Button>
 
           <Button

@@ -1,39 +1,57 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, LogOut, Edit } from "lucide-react";
+import { User, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { courseService } from "@/services/courseService";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Profile = () => {
   const navigate = useNavigate();
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [userData, setUserData] = useState({
-    name: "Nombre Usuario",
-    email: "usuario@ejemplo.com",
-  });
-  const [formData, setFormData] = useState(userData);
+  const { user, logout } = useAuth();
+  const [coursesCount, setCoursesCount] = useState(0);
+  const [averageGrade, setAverageGrade] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const courses = await courseService.getAllCourses();
+        setCoursesCount(courses.length);
+
+        if (courses.length > 0) {
+          const gpaData = await courseService.calculateGPA();
+          setAverageGrade(Math.round(gpaData.gpa * 100) / 100);
+        }
+      } catch (error) {
+        console.error("Error loading profile data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const handleLogout = () => {
+    logout();
     toast.success("Sesión cerrada");
-    navigate("/");
+    navigate("/login");
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    setUserData(formData);
-    setIsEditOpen(false);
-    toast.success("Perfil actualizado correctamente");
+  const handleConfirmLogout = () => {
+    handleLogout();
   };
 
   return (
@@ -51,77 +69,33 @@ const Profile = () => {
               <User className="h-12 w-12 text-primary-foreground" />
             </div>
             <div className="text-center">
-              <h2 className="text-2xl font-bold">{userData.name}</h2>
-              <p className="text-muted-foreground">{userData.email}</p>
+              <h2 className="text-2xl font-bold">
+                {user ? `${user.firstName} ${user.lastName}` : "Nombre Usuario"}
+              </h2>
+              <p className="text-muted-foreground">{user?.email || "usuario@ejemplo.com"}</p>
+              {user?.studentId && (
+                <p className="text-sm text-muted-foreground mt-2">ID: {user.studentId}</p>
+              )}
+              {user?.university && (
+                <p className="text-sm text-muted-foreground">{user.university}</p>
+              )}
             </div>
-            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Editar Perfil
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Editar Perfil</DialogTitle>
-                  <DialogDescription>
-                    Actualiza tu información personal
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSaveProfile} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nombre</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
-                      placeholder="Tu nombre"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Correo electrónico</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      placeholder="tu@email.com"
-                      required
-                    />
-                  </div>
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setFormData(userData);
-                        setIsEditOpen(false);
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button type="submit">Guardar Cambios</Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
           </div>
         </Card>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="p-6 text-center">
-            <p className="text-4xl font-bold text-primary mb-2">5</p>
-            <p className="text-base text-muted-foreground">Materias</p>
+            <p className="text-4xl font-bold text-primary mb-2">{coursesCount}</p>
+            <p className="text-base text-muted-foreground">
+              {coursesCount === 1 ? "Materia" : "Materias"}
+            </p>
           </Card>
           <Card className="p-6 text-center">
-            <p className="text-4xl font-bold text-success mb-2">86%</p>
-            <p className="text-base text-muted-foreground">Promedio</p>
+            <p className="text-4xl font-bold text-success mb-2">
+              {isLoading ? "-" : `${averageGrade.toFixed(2)}`}
+            </p>
+            <p className="text-base text-muted-foreground">Promedio General</p>
           </Card>
         </div>
 
@@ -137,6 +111,26 @@ const Profile = () => {
           </Button>
         </div>
       </div>
+
+      <AlertDialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cerrar sesión</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Estás seguro de que deseas cerrar sesión?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-2 justify-end">
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmLogout}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Cerrar sesión
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

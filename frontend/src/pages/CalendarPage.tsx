@@ -22,24 +22,7 @@ interface Event {
 
 const CalendarPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [events, setEvents] = useState<Event[]>([
-    {
-      id: "1",
-      title: "Examen de Cálculo",
-      description: "Examen del segundo parcial",
-      date: new Date(2025, 10, 10),
-      time: "10:00",
-      color: "bg-blue-500"
-    },
-    {
-      id: "2",
-      title: "Entrega Proyecto Literatura",
-      description: "Análisis de obra literaria",
-      date: new Date(2025, 10, 15),
-      time: "23:59",
-      color: "bg-green-500"
-    },
-  ]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [newEvent, setNewEvent] = useState({
     title: "",
